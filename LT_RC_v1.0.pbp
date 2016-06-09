@@ -1,0 +1,180 @@
+'MILES TAG Remote Control V1.0
+'Revision Date: 12 Feb 2016
+'Версия на шесть кнопок без "Shift"
+'
+'Written for PICBasic Pro Compiler version 2.50 (www.melabs.com)
+'Processor=PIC16F684  (MCLR=OFF; OSC=INTRC)
+
+DEFINE OSC 8
+'*************************************************************	
+'*************************************************************
+'******************** DEFINE CONSTANTS ***********************
+'*************************************************************
+'*************************************************************
+protocol    CON 232           '232=MT Core
+
+mtheader    CON 2400
+mtbit0      CON 600
+mtbit1      CON 1200
+mtspace     CON 600
+
+'*************************************************************
+'*************************************************************
+'******************** DEFINE VARIABLES ***********************
+'*************************************************************
+'*************************************************************
+bit_counter 	VAR BYTE
+databyte 		VAR BYTE	
+message         VAR BYTE
+temp			VAR BYTE
+message_ID		VAR BYTE
+
+
+'*************************************************************
+'*************************************************************
+'******************** PIN ASSIGNMENTS ************************
+'*************************************************************
+'*************************************************************
+Symbol btn1 	    = PORTA.4			'Первая кнопка
+Symbol btn2     	= PORTC.2			'Вторая кнопка
+Symbol btn3     	= PORTA.2			'Третья кнопка
+Symbol btn4	    	= PORTA.5			'Четвертая кнопка
+Symbol btn5			= PORTA.0			'Пятая кнопка
+Symbol btn6     	= PORTA.1			'Шестая кнопка    
+
+Symbol LED1 	    = PORTC.3			'красный светодиод нажатия
+Symbol LED2 	    = PORTC.4			'зелёный светодиод посылки сигнала
+Symbol IRLED 		= PORTC.5        	'ИК-светодиод
+	
+'*************************************************************
+'*************************************************************
+'******************** INITIALIZATION *************************
+'*************************************************************
+'*************************************************************
+initialize:
+	OSCCON = %01111000
+	CMCON0 = 7				'turn off comparators
+	ANSEL = 0
+	
+	PR2 = 35				'PWM Period (40K=49, 56K=35) (35 to 55)
+	CCPR1L = 15				'PWM Duty Cycle (1 to 15)
+	T2CON = 4				'Timer2 = ON; Prescale = 1:1
+	CCP1CON = 0				'PWM module off
+	OPTION_REG = %01111111	'Turn PortA weak pull-ups
+	
+	TRISA = %110111    		'set PortA directions
+	WPUA =  %110111			'enable weak pull-ups PortA
+	IOCA =  %000000			'disable PORTA.0 Int On Change
+
+    TRISC = %000111    		'set PortC directions
+	
+	PORTA = %000000			'обнуление значений PortA
+	PORTC = %000000    		'обнуление значений PortC
+
+'*************************************************************	
+'*************************************************************
+'********************* MAIN PROGRAM **************************
+'*************************************************************
+'*************************************************************
+    high LED1 'зажечь красный светодиод для индикации работы
+	PAUSE 1000          
+	LOW LED1
+
+start:    
+    PAUSE 200
+	
+button_loop:	
+    IF btn1 = 0 THEN    'проверка нажатия 1 кнопки
+        message_ID = 3  'идентификатор пульта
+        message = $05   'Новая игра
+        Goto send_message
+    ENDIF  
+        
+    IF btn2 = 0 THEN    'проверка нажатия 2 кнопки
+        message_ID = 3  'идентификатор пульта
+        message = $22   'Двойная жизнь до конца раунда (разовое увеличение)
+        Goto send_message 
+    ENDIF
+
+    IF btn3 = 0 THEN    'проверка нажатия 3 кнопки
+        message_ID = 3  'идентификатор пульта
+       	message = $0E   'Смена мощности выстрела (49%-99%)
+        Goto send_message
+    ENDIF
+       
+    IF btn4 = 0 THEN    'проверка нажатия 4 кнопки
+        message_ID = 41 'Смена цвета команды (0хА9)
+        message = 0     'Красный цвет
+        Goto send_message       
+    ENDIF
+                
+    IF btn5 = 0 THEN    'проверка нажатия 5 кнопки
+        message_ID = 41 'Смена цвета команды (0хА9)
+        message = 1	    'Синий цвет
+        Goto send_message
+    ENDIF
+
+	IF btn6 = 0 THEN    'проверка нажатия 6 кнопки
+        message_ID = 3  'идентификатор пульта
+       	message = $0D   'Полное здоровье
+        Goto send_message
+    ENDIF
+                
+        nap 4   'low power sleep
+	
+	GoTo button_loop
+
+'*************************************************************	
+'*************************************************************
+'********************** SUBROUTINES **************************
+'*************************************************************
+'*************************************************************
+send_message:					'send 24 bits 
+    high LED2                 'зажечь светодиод для индикации нажатия
+	PAUSE 150          
+	LOW LED2
+     
+	CCP1CON = 12				'send MT header pulse (2.4mS)
+    	pauseus mtheader  
+	CCP1CON = 0
+
+message_first_byte:
+	databyte = message_ID | %10000000     		'(packet_ID=1; sys_msg)  
+	GoSub send_byte
+
+message_second_byte:
+	databyte = message 			      
+	GoSub send_byte
+
+message_third_byte:
+	databyte = protocol
+	GoSub send_byte
+	
+	goto start
+
+'-----------------------------------------------------------
+send_byte:						'send 8 bits (databyte)
+	For bit_counter = 1 TO 8	'send 8 data bits MSB first
+        	pauseus mtspace     'send space -- space between data pulses  
+		IF databyte.7 = 1 Then trans1
+			CCP1CON = 12		'send zero
+            	pauseus mtbit0  
+			CCP1CON = 0
+			@ rlf	_databyte,F		
+		GoTo bypassx
+trans1:
+			CCP1CON = 12		'send one
+            	pauseus mtbit1
+			CCP1CON = 0	
+			@ rlf	_databyte,F		
+bypassx:
+	Next bit_counter
+	
+	Return
+
+'******************************************************
+
+
+	End
+
+
