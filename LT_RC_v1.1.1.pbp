@@ -1,6 +1,5 @@
-'MILES TAG Remote Control V1.0
-'Revision Date: 12 Feb 2016
-'Версия на шесть кнопок без "Shift"
+'MILES TAG Remote Control V1.1.1
+'Revision Date: 10 Jun 2016
 '
 'Written for PICBasic Pro Compiler version 2.50 (www.melabs.com)
 'Processor=PIC16F684  (MCLR=OFF; OSC=INTRC)
@@ -11,9 +10,7 @@ DEFINE OSC 8
 '******************** DEFINE CONSTANTS ***********************
 '*************************************************************
 '*************************************************************
-protocol    CON 232           '232=MT Core
 
-mtheader    CON 2400
 mtbit0      CON 600
 mtbit1      CON 1200
 mtspace     CON 600
@@ -24,10 +21,10 @@ mtspace     CON 600
 '*************************************************************
 '*************************************************************
 bit_counter 	VAR BYTE
-databyte 		VAR BYTE	
+databyte 	VAR BYTE	
 message         VAR BYTE
-temp			VAR BYTE
-message_ID		VAR BYTE
+temp		VAR BYTE
+message_ID	VAR BYTE
 flag            var byte
 flag2           var byte
 
@@ -37,16 +34,16 @@ flag2           var byte
 '******************** PIN ASSIGNMENTS ************************
 '*************************************************************
 '*************************************************************
-Symbol btn1 	    = PORTA.4			'Первая кнопка
+Symbol btn1 	    	= PORTA.4			'Первая кнопка
 Symbol btn2     	= PORTC.2			'Вторая кнопка
 Symbol btn3     	= PORTA.2			'Третья кнопка
 Symbol btn4	    	= PORTA.5			'Четвертая кнопка
-Symbol btn5			= PORTA.0			'Пятая кнопка
+Symbol btn5		= PORTA.0			'Пятая кнопка
 Symbol btn6     	= PORTA.1			'Шестая кнопка    
 
-Symbol LED1 	    = PORTC.3			'красный светодиод нажатия
-Symbol LED2 	    = PORTC.4			'зелёный светодиод посылки сигнала
-Symbol IRLED 		= PORTC.5        	'ИК-светодиод
+Symbol LED1 	    	= PORTC.3			'красный светодиод нажатия
+Symbol LED2 	    	= PORTC.4			'зелёный светодиод посылки сигнала
+Symbol IRLED 		= PORTC.5        		'ИК-светодиод
 	
 '*************************************************************
 '*************************************************************
@@ -188,7 +185,7 @@ send_message:					'send 24 bits
 	LOW LED2
      
 	CCP1CON = 12				'send MT header pulse (2.4mS)
-    	pauseus mtheader  
+    	pauseus 2400  
 	CCP1CON = 0
 
 message_first_byte:
@@ -200,7 +197,7 @@ message_second_byte:
 	GoSub send_byte
 
 message_third_byte:
-	databyte = protocol
+	databyte = $E8
 	GoSub send_byte
 	
 	goto release
